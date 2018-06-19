@@ -61,10 +61,14 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
                                 padding='same',kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
     deconv_1 = tf.layers.conv2d_transpose(conv_1x1,num_classes,4,strides=(2,2),
                                           padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
-    comb1 = tf.add(vgg_layer7_out,deconv_1)
+    conv1x1_l4= tf.layers.conv2d(vgg_layer4_out,num_classes,1,strides=(1,1),
+                                padding='same',kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+    comb1 = tf.add(conv1x1_l4, deconv_1)
     deconv_2 = tf.layers.conv2d_transpose(comb1,num_classes,4,strides=(2,2),
                                           padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
-    comb2 = tf.add(vgg_layer3_out, deconv_2)
+    conv1x1_l3= tf.layers.conv2d(vgg_layer3_out,num_classes,1,strides=(1,1),
+                                padding='same',kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+    comb2 = tf.add(conv1x1_l3, deconv_2)
     deconv_3 = tf.layers.conv2d_transpose(comb2, num_classes, 16, strides=(8, 8),
                                           padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
     print('vgg_layer7_out Shape :',tf.shape(vgg_layer7_out))
@@ -87,7 +91,11 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     # TODO: Implement function
     logits = tf.reshape(nn_last_layer, (-1, num_classes))
     label = tf.reshape(correct_label, (-1, num_classes))
-    cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits, label))
+    cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=label))
+	# Adding regularization penalty to loss
+    reg_var = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+    regularization_loss = tf.contrib.layers.apply_regularization(regularizer ,reg_var)
+    cross_entropy_loss += regularization_loss
     # Apply an Adam optimizer
     train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cross_entropy_loss)
     return (logits, train_op, cross_entropy_loss)
@@ -110,11 +118,13 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     :param learning_rate: TF Placeholder for learning rate
     """
     # TODO: Implement function
-    learning_rate_vl = 0.000001
+    learning_rate_vl = 0.0009
     keep_prob_vl = 0.7
-    for epoch in epochs:
+    sess.run(tf.global_variables_initializer())
+    for epoch in range(epochs):
         for images,labels in get_batches_fn(batch_size):
-            sess.run(train_op,feed_dict={input_image:images, correct_label:labels,keep_prob:keep_prob_vl, learning_rate:learning_rate_vl})
+            _,loss = sess.run([train_op,cross_entropy_loss],feed_dict={input_image:images, correct_label:labels,keep_prob:keep_prob_vl, learning_rate:learning_rate_vl})
+        print("epoch: {} Loss : {}".format(epoch+1,loss))
 tests.test_train_nn(train_nn)
 
 
@@ -122,7 +132,7 @@ def run():
     num_classes = 2
     image_shape = (160, 576)
     epochs = 30
-    batch_size = 4
+    batch_size = 8
 
     data_dir = './data'
     runs_dir = './runs'
@@ -146,7 +156,7 @@ def run():
         #  https://datascience.stackexchange.com/questions/5224/how-to-prepare-augment-images-for-neural-network
 
         # TODO: Build NN using load_vgg, layers, and optimize function
-        labels = tf.placeholder(dtype=tf.float32, shape=(None, 1, image_shape.shape[0], image_shape.shape[1]),
+        labels = tf.placeholder(dtype=tf.int32, shape=(None, None, None, num_classes),
                                 name='segmentation_labels')
         learning_rate_ph = tf.placeholder(dtype=tf.float32, name='learning_rate')
         # keep_prob_ph = tf.placeholder(dtype=tf.float32, name='keep probablity')
