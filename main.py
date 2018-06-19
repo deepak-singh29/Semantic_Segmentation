@@ -92,23 +92,23 @@ def optimize(nn_last_layer, correct_label, learning_rate, num_classes):
     logits = tf.reshape(nn_last_layer, (-1, num_classes))
     label = tf.reshape(correct_label, (-1, num_classes))
     cross_entropy_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=logits, labels=label))
-	# Adding regularization penalty to loss
-    reg_var = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-    regularization_loss = tf.contrib.layers.apply_regularization(regularizer ,reg_var)
-    cross_entropy_loss += regularization_loss
+    # Adding regularization penalty to loss
+    reg_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+    reg_constant = 0.01  
+    cross_entropy_loss = cross_entropy_loss + reg_constant * sum(reg_losses)
     # Apply an Adam optimizer
     train_op = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cross_entropy_loss)
 
     ## Accuracy definition
-    correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(label, 1))
-    accuracy_operation = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+    # correct_prediction = tf.equal(tf.argmax(logits, 1), tf.argmax(label, 1))
+    # accuracy_operation = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
-    return (logits, train_op, cross_entropy_loss, accuracy_operation)
+    return (logits, train_op, cross_entropy_loss)
 tests.test_optimize(optimize)
 
 
 def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss, input_image,
-             correct_label, keep_prob, learning_rate,accuracy_operation):
+             correct_label, keep_prob, learning_rate):
     """
     Train neural network and print out the loss during training.
     :param sess: TF Session
@@ -130,13 +130,13 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
     for epoch in range(epochs):
         total_loss = 0.0
         count = 0
-        accuracy = 0
+        # accuracy = 0
         for images,labels in get_batches_fn(batch_size):
-            _,loss,accr = sess.run([train_op,cross_entropy_loss,accuracy_operation],feed_dict={input_image:images, correct_label:labels,keep_prob:keep_prob_vl, learning_rate:learning_rate_vl})
+            _,loss = sess.run([train_op,cross_entropy_loss],feed_dict={input_image:images, correct_label:labels,keep_prob:keep_prob_vl, learning_rate:learning_rate_vl})
             total_loss += loss
             count += 1
-            accuracy += accr
-        print("epoch: {} Loss : {} Training Accuracy : {}".format(epoch+1,total_loss,accr))
+            # accuracy += accr
+        print("epoch: {} Loss : {} ".format(epoch+1,total_loss/count))
 tests.test_train_nn(train_nn)
 
 
@@ -175,14 +175,14 @@ def run():
 
         l_image_input, l_keep_prob, l_max_pool1, l_conv1, l_max_pool2 = load_vgg(sess, vgg_path)
         output = layers(l_max_pool1, l_conv1, l_max_pool2, num_classes)
-        (logits, train_op, cross_entropy_loss, accuracy_operation) = optimize(output, labels, learning_rate_ph, num_classes)
+        (logits, train_op, cross_entropy_loss) = optimize(output, labels, learning_rate_ph, num_classes)
 
         # For getting all the operations
         # for op in tf.get_default_graph().get_operations():
         #     print(op.name)
         # TODO: Train NN using the train_nn function
         train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_loss, l_image_input,
-                 labels, l_keep_prob, learning_rate_ph, accuracy_operation)
+                 labels, l_keep_prob, learning_rate_ph)
         # TODO: Save inference data using helper.save_inference_samples
         helper.save_inference_samples(runs_dir, data_dir, sess, image_shape, logits, l_keep_prob, l_image_input)
 
