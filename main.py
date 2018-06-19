@@ -58,19 +58,19 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     """
     # TODO: Implement function
     conv_1x1 = tf.layers.conv2d(vgg_layer7_out,num_classes,1,strides=(1,1),
-                                padding='same',kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+                                padding='same',kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3),kernel_initializer = tf.random_normal_initializer(stddev=0.01))
     deconv_1 = tf.layers.conv2d_transpose(conv_1x1,num_classes,4,strides=(2,2),
-                                          padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+                                          padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3),kernel_initializer = tf.random_normal_initializer(stddev=0.01))
     conv1x1_l4= tf.layers.conv2d(vgg_layer4_out,num_classes,1,strides=(1,1),
-                                padding='same',kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+                                padding='same',kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3),kernel_initializer = tf.random_normal_initializer(stddev=0.01))
     comb1 = tf.add(conv1x1_l4, deconv_1)
     deconv_2 = tf.layers.conv2d_transpose(comb1,num_classes,4,strides=(2,2),
-                                          padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+                                          padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3),kernel_initializer = tf.random_normal_initializer(stddev=0.01))
     conv1x1_l3= tf.layers.conv2d(vgg_layer3_out,num_classes,1,strides=(1,1),
-                                padding='same',kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+                                padding='same',kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3),kernel_initializer = tf.random_normal_initializer(stddev=0.01))
     comb2 = tf.add(conv1x1_l3, deconv_2)
     deconv_3 = tf.layers.conv2d_transpose(comb2, num_classes, 16, strides=(8, 8),
-                                          padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))
+                                          padding='same', kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3),kernel_initializer = tf.random_normal_initializer(stddev=0.01))
     print('vgg_layer7_out Shape :',tf.shape(vgg_layer7_out))
     print('deconv_1 Shape :', tf.shape(deconv_1))
     print('vgg_layer3_out Shape :', tf.shape(vgg_layer3_out))
@@ -143,8 +143,8 @@ tests.test_train_nn(train_nn)
 def run():
     num_classes = 2
     image_shape = (160, 576)
-    epochs = 30
-    batch_size = 8
+    epochs = 40
+    batch_size = 5
 
     data_dir = './data'
     runs_dir = './runs'
